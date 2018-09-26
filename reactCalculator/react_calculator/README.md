@@ -1,22 +1,9 @@
-# webpack react demo
+# to run, clone or download. Head over to your terminal, enter the reactCalculator directory and type:
 
-## 安装
 ```
-yarn --development 
+yarn start
 
 // or
 
-npm install --development 
-```
-
-## 测试
-
-```
 npm start
-```
-
-## 构建
-
-```
-npm run build
 ```
