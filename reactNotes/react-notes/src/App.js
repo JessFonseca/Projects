@@ -8,7 +8,7 @@ class App extends Component {
     card: [],
     newName: "",
     body: "",
-    edittingCardId: 0,
+    edittingCardId: -1,
     counter: 0,
     isValid: true,
     showForm: false,
@@ -30,6 +30,8 @@ class App extends Component {
     event.preventDefault();
     if (this.isValid()) {
       var newCard = this.state.card.slice();
+      newCard.reverse();
+
       newCard.push({
         id: this.state.counter + 1,
         name: this.state.newName,
@@ -40,6 +42,9 @@ class App extends Component {
         highlight: false
       });
       newCard.reverse();
+      newCard[this.state.edittingCardId + 1].expand = "react-card";
+      newCard[this.state.edittingCardId + 1].cardInfo = "card-info";
+      newCard[this.state.edittingCardId + 1].highlight = false;
       this.setState({
         card: newCard,
         newName: "",
@@ -50,9 +55,6 @@ class App extends Component {
         showShowAddNewCardBtn: true,
         editting: false
       });
-      newCard[this.state.edittingCardId].expand = "react-card";
-      newCard[this.state.edittingCardId].cardInfo = "card-info";
-      newCard[this.state.edittingCardId].highlight = false;
       this.showAllCards();
     } else {
       this.setState({
