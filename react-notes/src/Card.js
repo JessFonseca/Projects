@@ -8,7 +8,6 @@ function Card(props) {
           <h2 className="card-title">Name:</h2>
           <br />
           <h2 className="card-name">{props.name}</h2>
-          {/* <h2>ID: {props.id}</h2> */}
           <hr className="card-line" />
           <p className={props.cardInfo}>{props.body}</p>
           <p className="card-date">

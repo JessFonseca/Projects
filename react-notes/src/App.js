@@ -2,14 +2,19 @@ import React, { Component } from "react";
 import "./App.css";
 import Card from "./Card";
 import Form from "./Form";
+import fire from "./config/config";
+import LoginForm from "./LoginForm";
+import { Alert, Button } from "reactstrap";
 
 class App extends Component {
   state = {
+    email: "",
+    password: "",
+    user: null,
     card: [],
     newName: "",
     body: "",
-    edittingCardId: -1,
-    counter: 0,
+    edittingCardId: "",
     isValid: true,
     showForm: false,
     showShowAddNewCardBtn: true,
@@ -17,6 +22,36 @@ class App extends Component {
     showCardEditor: false,
     editting: false
   };
+
+  componentDidMount() {
+    fire.auth().onAuthStateChanged(user => {
+      if (user) {
+        this.setState({ user });
+        const itemsRef = fire
+          .database()
+          .ref("users/" + this.state.user.uid + "/cards");
+        itemsRef.on("value", snapshot => {
+          let items = snapshot.val();
+          let newState = [];
+          for (let item in items) {
+            newState.push({
+              id: item,
+              name: items[item].name,
+              info: items[item].info,
+              date: items[item].date,
+              expand: items[item].expand,
+              cardInfo: items[item].cardInfo,
+              highlight: items[item].highlight
+            });
+          }
+          newState.reverse();
+          this.setState({
+            card: newState
+          });
+        });
+      }
+    });
+  }
 
   isValid = () => {
     if (this.state.newName === "" || this.state.body === "") {
@@ -29,32 +64,19 @@ class App extends Component {
   addCard = event => {
     event.preventDefault();
     if (this.isValid()) {
-      var newCard = this.state.card.slice();
-      newCard.reverse();
-
-      newCard.push({
-        id: this.state.counter + 1,
+      //add to database
+      const itemsRef = fire
+        .database()
+        .ref("users/" + this.state.user.uid + "/cards");
+      const item = {
         name: this.state.newName,
         info: this.state.body,
         date: Date(),
         expand: "react-card",
         cardInfo: "card-info",
         highlight: false
-      });
-      newCard.reverse();
-      newCard[this.state.edittingCardId + 1].expand = "react-card";
-      newCard[this.state.edittingCardId + 1].cardInfo = "card-info";
-      newCard[this.state.edittingCardId + 1].highlight = false;
-      this.setState({
-        card: newCard,
-        newName: "",
-        body: "",
-        counter: this.state.counter + 1,
-        isValid: true,
-        showForm: false,
-        showShowAddNewCardBtn: true,
-        editting: false
-      });
+      };
+      itemsRef.push(item);
       this.showAllCards();
     } else {
       this.setState({
@@ -63,21 +85,20 @@ class App extends Component {
     }
   };
 
-  addChanges = () => {
-    var edittedCard = this.state.card.slice();
-    edittedCard[this.state.edittingCardId].name = this.state.newName;
-    edittedCard[this.state.edittingCardId].info = this.state.body;
-    this.setState({
-      card: edittedCard,
-      newName: "",
-      body: "",
-      showCardEditor: false,
-      showShowAddNewCardBtn: true,
-      editting: false
-    });
-    edittedCard[this.state.edittingCardId].expand = "react-card";
-    edittedCard[this.state.edittingCardId].cardInfo = "card-info";
-    edittedCard[this.state.edittingCardId].highlight = false;
+  addChanges = e => {
+    e.preventDefault();
+    //edit card in database
+    fire
+      .database()
+      .ref(`/users/${this.state.user.uid}/cards/${this.state.edittingCardId}`)
+      .update({
+        name: this.state.newName,
+        info: this.state.body,
+        expand: "react-card",
+        cardInfo: "card-info",
+        highlight: false,
+        date: Date()
+      });
     this.showAllCards();
   };
 
@@ -94,24 +115,30 @@ class App extends Component {
   };
 
   deleteCard = id => {
-    var newCard = this.state.card.slice();
-    newCard.splice(id, 1);
-    this.setState({
-      card: newCard,
-      edittingCardId: 0
-    });
+    //remove from database
+    const itemRef = fire
+      .database()
+      .ref(`/users/${this.state.user.uid}/cards/${id}`);
+    itemRef.remove();
     this.showAllCards();
   };
 
   editCard = id => {
-    this.setState({
-      newName: this.state.card[id].name,
-      body: this.state.card[id].info,
-      showCardEditor: true,
-      showShowAddNewCardBtn: false,
-      edittingCardId: id,
-      showForm: false,
-      editting: true
+    const itemsRef = fire
+      .database()
+      .ref("users/" + this.state.user.uid + "/cards");
+    itemsRef.once("value", snapshot => {
+      let items = snapshot.val();
+
+      this.setState({
+        newName: items[id].name,
+        body: items[id].info,
+        showCardEditor: true,
+        showShowAddNewCardBtn: false,
+        edittingCardId: id,
+        showForm: false,
+        editting: true
+      });
     });
   };
 
@@ -148,30 +175,43 @@ class App extends Component {
 
   showAllCards = () => {
     this.setState({
-      highlighted: false
-    });
-  };
-
-  cancelForm = () => {
-    this.setState({
+      highlighted: false,
       newName: "",
       body: "",
-      showCardEditor: false,
+      isValid: true,
+      showForm: false,
       showShowAddNewCardBtn: true,
       editting: false,
-      showForm: false
+      edittingCardId: "",
+      showCardEditor: false
     });
   };
-  render() {
-    // set card expand class
 
+  logOut = () => {
+    fire
+      .auth()
+      .signOut()
+      .then(() => {
+        this.setState({
+          user: null
+        });
+      });
+  };
+
+  // getUserFromLoginForm = userFromLoginForm => {
+  //   this.setState({
+  //     user: userFromLoginForm
+  //   });
+  // };
+
+  render() {
     //Validate input to require fields are used
     let validateMessage;
     if (this.state.isValid) {
       validateMessage = "";
     } else {
       validateMessage = (
-        <p class="error-message">Please enter both a name and body message</p>
+        <Alert color="danger">Please enter both a name and body message</Alert>
       );
     }
 
@@ -180,9 +220,9 @@ class App extends Component {
     if (this.state.showShowAddNewCardBtn) {
       ShowAddNewCardBtn = (
         <div className="btn-center">
-          <button className="btn" onClick={this.handleFormButton}>
+          <Button color="primary" onClick={this.handleFormButton}>
             Add New Card
-          </button>
+          </Button>
         </div>
       );
     } else {
@@ -203,7 +243,7 @@ class App extends Component {
           handleTextNameInput={this.handleTextNameInput}
           handleTextBodyInput={this.handleTextBodyInput}
           formBtn="Add Card"
-          cancelForm={this.cancelForm}
+          cancelForm={this.showAllCards}
           formTitle="ADDING NEW CARD"
         />
       );
@@ -222,7 +262,7 @@ class App extends Component {
           handleTextNameInput={this.handleTextNameInput}
           handleTextBodyInput={this.handleTextBodyInput}
           formBtn="Add Changes"
-          cancelForm={this.cancelForm}
+          cancelForm={this.showAllCards}
           formTitle="EDITTING CARD"
         />
       );
@@ -230,62 +270,73 @@ class App extends Component {
 
     return (
       <div className="App">
-        <header>
-          <h1>Lets make some notecards!</h1>
-          {ShowAddNewCardBtn}
-          {form}
-          {validateMessage}
-          {editCard}
-        </header>
-        <div
-          className={
-            this.state.editting
-              ? "hide"
-              : this.state.highlighted
-                ? "highlighted-card-area"
-                : "card-area"
-          }
-        >
-          {this.state.card.map(card => (
-            <Card
-              makeBig={
-                this.state.card[
-                  this.state.card.findIndex(i => i.id === card.id)
-                ].expand +
-                (this.state.highlighted
-                  ? this.state.card[
+        {this.state.user ? (
+          <React.Fragment>
+            <header>
+              <h1>Lets make some notecards!</h1>
+              <div className="text-center">
+                <Button
+                  className="float-center"
+                  color="danger"
+                  // size="lg"
+                  onClick={this.logOut}
+                >
+                  Logout
+                </Button>
+              </div>
+
+              {ShowAddNewCardBtn}
+              {form}
+              {validateMessage}
+              {editCard}
+            </header>
+            <div
+              className={
+                this.state.editting
+                  ? "hide"
+                  : this.state.highlighted
+                    ? "highlighted-card-area"
+                    : "card-area"
+              }
+            >
+              {this.state.card.map(card => (
+                <Card
+                  makeBig={
+                    this.state.card[
                       this.state.card.findIndex(i => i.id === card.id)
-                    ].highlight
-                    ? ""
-                    : " hide"
-                  : "")
-              }
-              key={card.id}
-              id={card.id}
-              name={card.name}
-              body={card.info}
-              deleteCard={() =>
-                this.deleteCard(
-                  this.state.card.findIndex(i => i.id === card.id)
-                )
-              }
-              editCard={() =>
-                this.editCard(this.state.card.findIndex(i => i.id === card.id))
-              }
-              date={card.date}
-              expand={() =>
-                this.toggleExpand(
-                  this.state.card.findIndex(i => i.id === card.id)
-                )
-              }
-              cardInfo={
-                this.state.card[
-                  this.state.card.findIndex(i => i.id === card.id)
-                ].cardInfo
-              }
-            />
-          ))}
-        </div>
+                    ].expand +
+                    (this.state.highlighted
+                      ? this.state.card[
+                          this.state.card.findIndex(i => i.id === card.id)
+                        ].highlight
+                        ? ""
+                        : " hide"
+                      : "")
+                  }
+                  key={card.id}
+                  id={card.id}
+                  name={card.name}
+                  body={card.info}
+                  deleteCard={() => this.deleteCard(card.id)}
+                  editCard={() => this.editCard(card.id)}
+                  date={card.date}
+                  expand={() =>
+                    this.toggleExpand(
+                      this.state.card.findIndex(i => i.id === card.id)
+                    )
+                  }
+                  cardInfo={
+                    this.state.card[
+                      this.state.card.findIndex(i => i.id === card.id)
+                    ].cardInfo
+                  }
+                />
+              ))}
+            </div>
+          </React.Fragment>
+        ) : (
+          <LoginForm />
+        )}
       </div>
     );
   }

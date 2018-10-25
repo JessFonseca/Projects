@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "reactstrap";
 
 function Form(props) {
   return (
@@ -25,10 +26,12 @@ function Form(props) {
               placeholder="Enter Info Here"
             />
             <br />
-            <input className="btn" type="submit" value={props.formBtn} />
-            <button className="btn" onClick={props.cancelForm}>
+            <Button color="primary" className="btn" type="submit">
+              {props.formBtn}
+            </Button>{" "}
+            <Button className="btn" onClick={props.cancelForm}>
               Cancel
-            </button>
+            </Button>
           </form>
         </div>
       </div>
