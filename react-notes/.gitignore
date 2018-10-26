@@ -9,7 +9,7 @@
 # production
 /build
 /firebase
-src/config
+
 
 
 # misc
